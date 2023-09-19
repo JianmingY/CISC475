@@ -72,7 +72,7 @@ def train(n_epochs, optimizer, model, loss_fn, train_loader, scheduler, device, 
 def test(train_loader, model, model_param,device):
   model.to(device)
   model.load_state_dict(torch.load(model_param))
-  for i in range(len(train_loader)):
+  for i in range(len(train_loader[:2047])):
     if i % 900 == 0:
       with torch.inference_mode():
         f = plt.figure()
@@ -121,8 +121,8 @@ if __name__ == "__main__":
 
 
 
-  train(n_epochs = args.epoch, optimizer = optimizer, model = model, loss_fn = loss_fn, train_loader = train_loader,
+  train(n_epochs = args.epoch, optimizer = optimizer, model = model, loss_fn = loss_fn, train_loader = train_loader[:2047],
       scheduler = scheduler, device = device, save_model_path = args.save_model, plot_loss_path = args.plot_loss)
 
 
-  test(train_loader,model,args.save_model)
+  test(train_loader,model,args.save_model,device)
