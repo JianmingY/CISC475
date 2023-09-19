@@ -1,0 +1,6 @@
+path: C:/Users/59344/fiftyone/open-images-v7/train
+train: images/train
+val: images/train
+
+names:
+  0: Knife
