@@ -17,13 +17,15 @@ class Model4layerMLP(nn.Module):
         self.type = 'MLP4'
         self.input_shape = (1,28*28)
 
-    def forward(self, X):
-        # encoder
+    def encode(self, X):
         X = self.fc1(X)
         X = F.relu(X)
         X = self.fc2(X)
         X = F.relu(X)
 
+        return X
+
+    def decode(self, X):
         # decoder
         X = self.fc3(X)
         X = F.relu(X)
@@ -31,6 +33,11 @@ class Model4layerMLP(nn.Module):
         X = torch.sigmoid(X)
 
         return X
+
+    def forward(self, X):
+        return self.decode(self.encode(X))
+
+
 
 
 
