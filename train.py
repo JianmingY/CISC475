@@ -201,8 +201,6 @@ if __name__ == "__main__":
 
   # noise_test(train_loader,model,args.save_model,device)
 
-  # n_steps = 10
-  # interpolate_bottlenecks(model, train_loader[600],train_loader[1200],n_steps)
 
     with (torch.inference_mode()):
       model.load_state_dict(torch.load('MLP.8.pth'))
