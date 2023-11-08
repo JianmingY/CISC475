@@ -7,7 +7,7 @@ from model import Model4layerMLP
 from torch.utils.data import DataLoader
 from torchsummary import summary
 import argparse
-
+import ultralytics
 
 
 ########################################### single pic test ################################################3
@@ -123,40 +123,6 @@ def noise_test(train_loader, model, model_param, device):
     plt.imshow(g_img, cmap='gray')
     plt.show()
 
-def interpolate_bottlenecks(model, image1, image2, n_steps):
-  # Encode both input images to get the bottleneck tensors
-  image1 = image1.reshape(1, 784)
-  image2 = image2.reshape(1, 784)
-  bottleneck1 = model.encode(image1)
-  bottleneck2 = model.encode(image2)
-
-  # Linearly interpolate between the two bottleneck tensors
-  interpolated_bottlenecks = []
-  for alpha in torch.linspace(0, 1, n_steps):
-    interpolated_bottleneck = alpha * bottleneck1 + (1 - alpha) * bottleneck2
-    interpolated_bottlenecks.append(interpolated_bottleneck)
-
-  # Decode each interpolated bottleneck to get reconstructed images
-  reconstructed_images = [model.decode(bottleneck) for bottleneck in interpolated_bottlenecks]
-  print(len((reconstructed_images)))
-  f = plt.figure(figsize=(10, 6))
-  with torch.inference_mode():
-    f.add_subplot(3, 3, 1)
-    t_img = reconstructed_images[0].reshape(28, 28)
-    plt.imshow(t_img, cmap='gray')
-    f.add_subplot(3, 3, 2)
-    t_img = reconstructed_images[1].reshape(28, 28)
-    plt.imshow(t_img, cmap='gray')
-    f.add_subplot(3, 3, 3)
-    t_img = reconstructed_images[2].reshape(28, 28)
-    plt.imshow(t_img, cmap='gray')
-    f.add_subplot(3, 3, 4)
-    t_img = reconstructed_images[3].reshape(28, 28)
-    plt.imshow(t_img, cmap='gray')
-    f.add_subplot(3, 3, 5)
-    t_img = reconstructed_images[4].reshape(28, 28)
-    plt.imshow(t_img, cmap='gray')
-    plt.show()
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
@@ -188,35 +154,39 @@ if __name__ == "__main__":
 
   if torch.cuda.is_available():
     device = "cuda"
+    print("yes")
+    ultralytics.checks()
   else:
     device = "cpu"
 
 
 
-  # train(n_epochs = args.epoch, optimizer = optimizer, model = model, loss_fn = loss_fn, train_loader = train_loader[:2047],
-  #     scheduler = scheduler, device = device, save_model_path = args.save_model, plot_loss_path = args.plot_loss)
+
+
+  train(n_epochs = args.epoch, optimizer = optimizer, model = model, loss_fn = loss_fn, train_loader = train_loader[:2047],
+      scheduler = scheduler, device = device, save_model_path = args.save_model, plot_loss_path = args.plot_loss)
   #
   #
   # test(train_loader,model,args.save_model,device)
-
+  #
   # noise_test(train_loader,model,args.save_model,device)
-
-
-    with (torch.inference_mode()):
-      model.load_state_dict(torch.load('MLP.8.pth'))
-      f = plt.figure(figsize=(14, 8))
-      f.add_subplot(3, 11, 1)
-      plt.imshow(train_loader[1].reshape(28,28), cmap = "gray")
-
-      for i in range(1, 10):
-        f.add_subplot(3, 11, i+1)
-        img1 = model.encode(train_loader[1].reshape(1,784)) * (10-i) / 10
-        img2 = model.encode(train_loader[2].reshape(1,784)) * i/10
-        img = img1 + img2
-        img = model.decode(img)
-        img = img.reshape(28,28)
-        plt.imshow(img, cmap="gray")
-
-      f.add_subplot(3, 11, 11)
-      plt.imshow(train_loader[2].reshape(28, 28), cmap="gray")
-      plt.show()
+  #
+  #
+  # with (torch.inference_mode()):
+  #   model.load_state_dict(torch.load('MLP.8.pth'))
+  #   f = plt.figure(figsize=(14, 8))
+  #   f.add_subplot(3, 11, 1)
+  #   plt.imshow(train_loader[1].reshape(28,28), cmap = "gray")
+  #
+  #   for i in range(1, 10):
+  #     f.add_subplot(3, 11, i+1)
+  #     img1 = model.encode(train_loader[1].reshape(1,784)) * (10-i) / 10
+  #     img2 = model.encode(train_loader[2].reshape(1,784)) * i/10
+  #     img = img1 + img2
+  #     img = model.decode(img)
+  #     img = img.reshape(28,28)
+  #     plt.imshow(img, cmap="gray")
+  #
+  #   f.add_subplot(3, 11, 11)
+  #   plt.imshow(train_loader[2].reshape(28, 28), cmap="gray")
+  #   plt.show()
