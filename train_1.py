@@ -11,29 +11,48 @@ import argparse
 def training(model,train_dataloader,loss_fn, scheduler, n_epochs, save_model_path):
     losses_train = []
     losses_test = []
+    train_accuracy = []
+    test_accuracy = []
     for epoch in range(1, n_epochs + 1):
+        top1 = 0.0
+        top1_train = 0.0
         print('epoch', epoch, "\t", "starts.....")
         for images, labels in train_dataloader:
             preds = model(images)
             loss_t = loss_fn(preds, labels)
+
+            _, train_predictions = torch.max(preds, 1)
+            train_accurate = torch.sum(train_predictions == labels).item()
+            top1_train += train_accurate
+
             optimizer.zero_grad()
             loss_t.backward()
             optimizer.step()
         scheduler.step(loss_t)
+
+        train_top1_accuracy = top1_train / len(training_data) * 100
+        train_accuracy.append(train_top1_accuracy)
 
         losses_train += [loss_t.item()]
 
         for images, labels in test_dataloader:
             preds = model(images)
             loss_e = loss_fn(preds, labels)
+
+            _, top1_predictions = torch.max(preds, 1)
+            top1_accurate = torch.sum(top1_predictions == labels).item()
+            top1 += top1_accurate
+
+        top1_accuracy = top1 / len(test_data) * 100
+        test_accuracy.append(top1_accuracy)
         losses_test += [loss_e.item()]
 
         print('{} Epoch {}, Training loss {}, Evaluation loss {}'.format(datetime.datetime.now()
                                                      , epoch, loss_t, loss_e))
     torch.save(model.state_dict(), save_model_path)
-    return [losses_train,losses_test]
+    return [losses_train,losses_test,train_accuracy,test_accuracy]
 
-def evaluation(model, model_path, loss_fn, test_dataloader, losses, figure_name):
+def evaluation(model, model_path, loss_fn, test_dataloader, losses_accuracies, figure_name):
     with (torch.inference_mode()):
         top1 = 0.0
         top3 = 0.0
@@ -60,17 +79,24 @@ def evaluation(model, model_path, loss_fn, test_dataloader, losses, figure_name)
 
 
 
-    plt.plot(losses[0], label = "Train Loss")
-    plt.plot(losses[1], label = "Eval Loss")
+    plt.plot(losses_accuracies[0], label = "Train Loss")
+    plt.plot(losses_accuracies[1], label = "Eval Loss")
     plt.title(f'Batch_{figure_name[0]} Nodes_{figure_name[1]} Dropout_{figure_name[2]} Regularization_{figure_name[3]} Optimizer_{figure_name[4]} LR_{figure_name[5]} Scheduler_{figure_name[6]}')
+    plt.ylabel('Loss')
+    plt.xlabel('epochs')
     plt.legend()
     plt.show()
 
-    plt.plot(top1_accuracy, label = "top1")
-    plt.plot(top3_accuracy, label = "top3")
+
+    plt.plot(losses_accuracies[2], label = "Train Accuracy")
+    plt.plot(losses_accuracies[3], label = "Eval Accuracy")
     plt.title("Accuracy")
+    plt.ylabel('Percentage Accuracy')
+    plt.xlabel('epochs')
     plt.legend()
+    plt.savefig(f'Batch_{figure_name[0]}Nodes_{figure_name[1]}Dropout_{figure_name[2]}Regularization_{figure_name[3]}Optimizer_{figure_name[4]}LR_{figure_name[5]}Scheduler_{figure_name[6]}.png')
     plt.show()
+
 
 
 
@@ -100,8 +126,8 @@ if __name__ == "__main__":
   parser.add_argument("-b", "--batch_size", type=int, help="Specify the batch size")
   parser.add_argument("-lr", "--learning_rate", type=float, help="Specify the learning rate")
   parser.add_argument("-op", "--optimizer", type=str, help="Specify the Optimizer")
-  parser.add_argument("-r", "--regularization", type=str, default="L2", help="Specify the regularization method")
-  parser.add_argument("-d", "--dropout", type=float, default=0.0, help="Specify the dropout rate")
+  parser.add_argument("-r", "--regularization", type=float, default=1e-15, help="Specify the weight decay value")
+  parser.add_argument("-d", "--dropout", type=float, default=0.3, help="Specify the dropout rate")
   parser.add_argument("-s", "--scheduler", type=str, help="Specify the learning rate scheduler")
   parser.add_argument("-pth", "--path", type=str, default='trained_model.pth', help="Specify tge saved model path")
 
@@ -117,22 +143,23 @@ if __name__ == "__main__":
   # print(training_data[0][0].squeeze().shape)
   # plt.imshow(training_data[0][0].squeeze(), cmap="gray")
   # plt.show()
-  model = MPL_3_layer_Classifier(N_tanh_activate=args.nodes)
+  model = MPL_3_layer_Classifier(N_tanh_activate=args.nodes, p=args.dropout)
   lr = args.learning_rate
   epochs = args.epoch
   optimizer = str(args.optimizer).upper()
+  weight_decay = float(args.regularization)
   loss_function = nn.CrossEntropyLoss()
   scheduler = str(args.scheduler).upper()
   save_model_path = args.path
 
   if optimizer.startswith("ADAM") or optimizer == "1":
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     opti_name = "ADAM"
   elif optimizer.startswith("SGD") or optimizer == "2":
-    optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9)
+    optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9,  weight_decay=weight_decay)
     opti_name = "SGD"
   elif optimizer.startswith("RMS") or optimizer == "3":
-    optimizer = torch.optim.RMSprop(model.parameters(), lr=lr, alpha=0.9)
+    optimizer = torch.optim.RMSprop(model.parameters(), lr=lr, alpha=0.9, weight_decay=weight_decay)
     opti_name = "RMSprop"
 
   if scheduler.startswith("ROP") or scheduler == "1":
@@ -145,7 +172,7 @@ if __name__ == "__main__":
       scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=lr, total_steps=epochs)
       sched_name = "OneCycle"
 
-  figure_name = [str(args.batch_size), str(args.nodes), str(args.dropout), str(args.regularization), opti_name, str(lr), sched_name]
+  figure_name = [str(args.batch_size), str(args.nodes), str(args.dropout), 'L2_'+str(args.regularization), opti_name, str(lr), sched_name]
 
   # print(optimizer)
   # print(scheduler)
